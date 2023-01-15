@@ -123,9 +123,33 @@ describe('blog tests', () => {
 			__v: 0
 		};
 
-		let result = await api
+		await api
 			.post('/api/blogs')
 			.send(newObj)
 			.expect(404)
+	})
+
+	test('if deleting works', async () => {
+		await api
+			.delete('/api/blogs')
+			.send({title: 'First class tests'})
+			.expect(204)
+	})
+
+	test('if updating works', async () => {
+		let newObj = {
+			title: "First class tests",
+			author: "Test man",
+			url: "http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll",
+			likes: 100} 
+
+		await api
+			.put('/api/blogs/First class tests')
+			.send(newObj)		
+		
+		let dbResult = await Blog.find({title: 'First class tests'});
+
+		expect(dbResult[0].likes).toBe(100);
+		expect(dbResult[0].author).toBe("Test man");
 	})
 })

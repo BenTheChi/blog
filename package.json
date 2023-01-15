@@ -15,5 +15,14 @@
   "bugs": {
     "url": "https://github.com/BenTheChi/blog/issues"
   },
-  "homepage": "https://github.com/BenTheChi/blog#readme"
+  "homepage": "https://github.com/BenTheChi/blog#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "mongoose": "^6.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
 }

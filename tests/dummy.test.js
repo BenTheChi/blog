@@ -51,8 +51,6 @@ const blogs = [
 	}  
 ]
 
-
-
 describe('total likes', () => {
 	test('dummy returns one', () => {
 		const blogs = []

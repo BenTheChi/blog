@@ -1,76 +1,39 @@
 const mongoose = require('mongoose')
 const supertest = require('supertest')
+const bcrypt = require('bcrypt')
 const Blog = require('../models/blog')
+const User = require('../models/user')
 const app = require('../app.js')
-
+const helper = require('./test_helper')
 const api = supertest(app);
 
-const blogs = [
-	{
-		title: "React patterns",
-		author: "Michael Chan",
-		url: "https://reactpatterns.com/",
-		likes: 7,
-		__v: 0
-	},
-	{
-		title: "Go To Statement Considered Harmful",
-		author: "Edsger W. Dijkstra",
-		url: "http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html",
-		likes: 5,
-		__v: 0
-	},
-	{
-		title: "Canonical string reduction",
-		author: "Edsger W. Dijkstra",
-		url: "http://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD808.html",
-		likes: 12,
-		__v: 0
-	},
-	{
-		title: "First class tests",
-		author: "Robert C. Martin",
-		url: "http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll",
-		likes: 10,
-		__v: 0
-	},
-	{
-		title: "TDD harms architecture",
-		author: "Robert C. Martin",
-		url: "http://blog.cleancoder.com/uncle-bob/2017/03/03/TDD-Harms-Architecture.html",
-		likes: 0,
-		__v: 0
-	},
-	{
-		title: "Type wars",
-		author: "Robert C. Martin",
-		url: "http://blog.cleancoder.com/uncle-bob/2016/05/01/TypeWars.html",
-		likes: 2,
-		__v: 0
-	}  
-]
+
 
 describe('blog tests', () => {
 	beforeEach(async () => {
+		await Blog.deleteMany({});
 		console.log('initializing DB');
 
-		blogs.forEach(async (blog) => {
+		for(const blog of helper.initialBlogs){
 			let blogObj = new Blog(blog);
 			await blogObj.save();
-		})
+		}
 
 		console.log('done');
 	});
-
-	afterEach(async () => {
-		await Blog.deleteMany({});
-	})
 
 	test('blogs are returned as json', async () => {
 		await api
 			.get('/api/blogs')
 			.expect(200)
 			.expect('Content-Type', /application\/json/)
+	})
+
+	test('all notes are returned', async () => {
+		console.log(helper.initialBlogs.length);
+		const response = await api.get('/api/blogs')
+	
+		expect(response.body).toHaveLength(helper.initialBlogs.length)
 	})
 
 	test('blogs have id', async () => {
@@ -151,5 +114,59 @@ describe('blog tests', () => {
 
 		expect(dbResult[0].likes).toBe(100);
 		expect(dbResult[0].author).toBe("Test man");
+	})
+})
+
+describe('when there is initially one user in db', () => {
+	beforeEach(async () => {
+		await User.deleteMany({})
+
+		const passwordHash = await bcrypt.hash('sekret', 10)
+		const user = new User({ username: 'root', name: 'admin', passwordHash })
+
+		await user.save()
+	})
+  
+	test('creation succeeds with a fresh username', async () => {
+		const usersAtStart = await helper.usersInDb()
+
+		const newUser = {
+			username: 'mluukkai',
+			name: 'Matti Luukkainen',
+			password: 'salainen',
+		}
+  
+		await api
+			.post('/api/users')
+			.send(newUser)
+			.expect(201)
+			.expect('Content-Type', /application\/json/)
+  
+		const usersAtEnd = await helper.usersInDb()
+		expect(usersAtEnd).toHaveLength(usersAtStart.length + 1)
+
+		const usernames = usersAtEnd.map(u => u.username)
+		expect(usernames).toContain(newUser.username)
+	})
+
+	test('creation fails with proper statuscode and message if username already taken', async () => {
+		const usersAtStart = await helper.usersInDb()
+
+		const newUser = {
+			username: 'root',
+			name: 'Superuser',
+			password: 'salainen',
+		}
+	
+		const result = await api
+			.post('/api/users')
+			.send(newUser)
+			.expect(400)
+			.expect('Content-Type', /application\/json/)
+
+		expect(result.body.error).toContain('username must be unique')
+	
+		const usersAtEnd = await helper.usersInDb()
+		expect(usersAtEnd).toEqual(usersAtStart)
 	})
 })
